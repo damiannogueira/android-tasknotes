@@ -23,9 +23,9 @@ It supports creating, editing, filtering, and persisting tasks locally using **D
 - **Create / Edit Task**
 
 ## Screenshots
-_Add screenshots here (recommended):_
-- `screenshots/list.png`
-- `screenshots/edit.png`
+![01-Tasklist](https://github.com/user-attachments/assets/1ed95654-094a-404a-970a-5181f3a203a5)
+![02-Filter-pending](https://github.com/user-attachments/assets/3478cb1a-77aa-45c1-9390-5023a96ee56e)
+![03-Filer-done](https://github.com/user-attachments/assets/11ea2545-46a4-4630-8ecf-3bee0393133d)
 
 ## Run Locally
 1. Clone the repo
