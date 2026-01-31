@@ -1,5 +1,8 @@
 package com.damian.tasknotes.ui.screens
 
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,11 +60,11 @@ fun TaskListScreen(
     // Tarea seleccionada para confirmar borrado en un AlertDialog
     var taskToDelete by remember { mutableStateOf<TaskUi?>(null) }
 
-    val pendingCount = tasks.count { !it.done }
-    val pendingText = if (pendingCount == 1) "1 pendiente" else "$pendingCount pendientes"
-
     // Filtro local para mostrar todas / pendientes / hechas
     var filter by remember { mutableStateOf(TaskFilter.ALL) }
+
+    val pendingCount = tasks.count { !it.done }
+    val pendingText = if (pendingCount == 1) "1 pendiente" else "$pendingCount pendientes"
 
     val filteredTasks = when (filter) {
         TaskFilter.ALL -> tasks
@@ -103,7 +106,7 @@ fun TaskListScreen(
                                 task = task,
                                 onToggleDone = { onToggleDone(task) },
                                 onDeleteClick = { taskToDelete = task },
-                                onClick = { onEdit(task.id) }
+                                onEditClick = { onEdit(task.id) }
                             )
                         }
                     }
@@ -115,7 +118,7 @@ fun TaskListScreen(
                                 task = task,
                                 onToggleDone = { onToggleDone(task) },
                                 onDeleteClick = { taskToDelete = task },
-                                onClick = { onEdit(task.id) }
+                                onEditClick = { onEdit(task.id) }
                             )
                         }
                     }
@@ -135,7 +138,7 @@ fun TaskListScreen(
                             task = task,
                             onToggleDone = { onToggleDone(task) },
                             onDeleteClick = { taskToDelete = task },
-                            onClick = { onEdit(task.id) }
+                            onEditClick = { onEdit(task.id) }
                         )
                     }
                 }
@@ -230,7 +233,7 @@ private fun TaskRow(
     task: TaskUi,
     onToggleDone: () -> Unit,
     onDeleteClick: () -> Unit,
-    onClick: () -> Unit
+    onEditClick: () -> Unit
 ) {
     val rowAlpha = if (task.done) 0.6f else 1f
 
@@ -240,6 +243,7 @@ private fun TaskRow(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // ✅ Checkbox NO abre editar
         Checkbox(
             checked = task.done,
             onCheckedChange = { onToggleDone() }
@@ -247,10 +251,15 @@ private fun TaskRow(
 
         Spacer(modifier = Modifier.width(8.dp))
 
+        // ✅ Solo esta zona abre editar (y usando overload compatible con tu Indication)
         Column(
             modifier = Modifier
                 .weight(1f)
                 .alpha(rowAlpha)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = LocalIndication.current
+                ) { onEditClick() }
         ) {
             Text(
                 text = task.title,
@@ -269,12 +278,13 @@ private fun TaskRow(
             Spacer(modifier = Modifier.height(6.dp))
 
             SuggestionChip(
-                onClick = { /* sin acción (solo visual) */ },
+                onClick = { /* solo visual */ },
                 label = { Text(if (task.done) "HECHA" else "PENDIENTE") },
                 enabled = false
             )
         }
 
+        // ✅ Delete NO abre editar
         IconButton(onClick = onDeleteClick) {
             Icon(Icons.Default.Delete, contentDescription = "Eliminar")
         }
@@ -282,4 +292,3 @@ private fun TaskRow(
 
     Divider()
 }
-

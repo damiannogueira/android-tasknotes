@@ -1,13 +1,7 @@
 package com.damian.tasknotes
 
 import android.content.Context
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -22,20 +16,20 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.first
 
-/* ---------- DataStore (persistencia simple en JSON) ----------
-Guardamos la lista completa como JSON para mantener la app simple.
-*/
+/* ---------- DataStore (persistencia simple en JSON) ---------- */
+
 private const val PREFS_NAME = "tasknotes_prefs"
 private const val TASKS_JSON = "tasks_json"
 
 private val Context.dataStore by preferencesDataStore(name = PREFS_NAME)
 private val TASKS_JSON_KEY = stringPreferencesKey(TASKS_JSON)
 
-private fun tasksToJson(tasks: List<TaskUi>): String = Gson().toJson(tasks)
+private fun tasksToJson(tasks: List<TaskUi>): String =
+    Gson().toJson(tasks)
 
 private fun jsonToTasks(json: String): List<TaskUi> {
     val type = object : TypeToken<List<TaskUi>>() {}.type
-    return Gson().fromJson<List<TaskUi>>(json, type) ?: emptyList()
+    return Gson().fromJson(json, type) ?: emptyList()
 }
 
 private suspend fun saveTasks(context: Context, tasks: List<TaskUi>) {
@@ -52,19 +46,12 @@ private suspend fun loadTasks(context: Context): List<TaskUi> {
     return try {
         jsonToTasks(json)
     } catch (_: Exception) {
-        // Si el JSON está corrupto, limpiamos y arrancamos vacío
-        clearTasksStorage(context)
+        context.dataStore.edit { it.remove(TASKS_JSON_KEY) }
         emptyList()
     }
 }
 
-private suspend fun clearTasksStorage(context: Context) {
-    context.dataStore.edit { prefs ->
-        prefs.remove(TASKS_JSON_KEY)
-    }
-}
-
-/* ---------- App + Navegación ---------- */
+/* ---------- Navegación ---------- */
 
 private const val ROUTE_LIST = "list"
 private const val ROUTE_CREATE = "create"
@@ -75,11 +62,11 @@ fun TaskNotesApp() {
     val context = LocalContext.current
     val navController = rememberNavController()
 
-    // Estado en memoria (se guarda automáticamente en DataStore)
+    // Estado en memoria
     val tasks = remember { mutableStateListOf<TaskUi>() }
     var nextId by remember { mutableIntStateOf(1) }
 
-    // Carga inicial: trae tareas guardadas y calcula el próximo id
+    // Carga inicial
     LaunchedEffect(Unit) {
         val loaded = loadTasks(context)
         tasks.clear()
@@ -87,7 +74,7 @@ fun TaskNotesApp() {
         nextId = (tasks.maxOfOrNull { it.id } ?: 0) + 1
     }
 
-    // Guardado automático: cada vez que cambia la lista, persistimos en DataStore
+    // Guardado automático
     LaunchedEffect(tasks.size, tasks.toList()) {
         saveTasks(context, tasks.toList())
     }
@@ -96,10 +83,14 @@ fun TaskNotesApp() {
         navController = navController,
         startDestination = ROUTE_LIST
     ) {
+
+        /* ---------- LISTA ---------- */
         composable(ROUTE_LIST) {
             TaskListScreen(
                 tasks = tasks,
-                onAddClick = { navController.navigate(ROUTE_CREATE) },
+                onAddClick = {
+                    navController.navigate(ROUTE_CREATE)
+                },
                 onToggleDone = { task ->
                     val index = tasks.indexOfFirst { it.id == task.id }
                     if (index != -1) {
@@ -115,6 +106,7 @@ fun TaskNotesApp() {
             )
         }
 
+        /* ---------- CREAR ---------- */
         composable(ROUTE_CREATE) {
             CreateTaskScreen(
                 onBack = { navController.popBackStack() },
@@ -132,14 +124,16 @@ fun TaskNotesApp() {
             )
         }
 
+        /* ---------- EDITAR ---------- */
         composable(ROUTE_EDIT) { backStackEntry ->
-            val taskId = backStackEntry.arguments?.getString("taskId")?.toIntOrNull()
+            val taskId = backStackEntry.arguments
+                ?.getString("taskId")
+                ?.toIntOrNull()
+
             val task = tasks.firstOrNull { it.id == taskId }
 
-            if (task == null) {
-                // Si el id no existe, volvemos atrás
-                LaunchedEffect(Unit) { navController.popBackStack() }
-            } else {
+            // 🔑 CLAVE: NO volvemos atrás automáticamente
+            if (task != null) {
                 CreateTaskScreen(
                     onBack = { navController.popBackStack() },
                     initialTitle = task.title,
